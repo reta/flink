@@ -17,6 +17,7 @@
 
 package org.apache.flink.testcontainers.opensearch;
 
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.utility.Base58;
@@ -28,13 +29,16 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
-import java.util.Collections;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
@@ -115,10 +119,17 @@ public class OpensearchContainer extends GenericContainer<OpensearchContainer> {
         withEnv("discovery.type", "single-node");
         withEnv("DISABLE_SECURITY_PLUGIN", "true");
         addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_TCP_PORT);
-        withCreateContainerCmdModifier(
-                cmd ->
-                        cmd.getHostConfig()
-                                .withSecurityOpts(Collections.singletonList("seccomp=unconfined")));
+
+        try {
+            final Path data = Files.createTempDirectory("opensearch");
+            addFileSystemBind(
+                    data.toFile().getAbsolutePath(),
+                    "/usr/share/opensearch/data",
+                    BindMode.READ_WRITE);
+        } catch (final IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+
         setWaitStrategy(
                 new HttpWaitStrategy()
                         .forPort(DEFAULT_HTTP_PORT)
