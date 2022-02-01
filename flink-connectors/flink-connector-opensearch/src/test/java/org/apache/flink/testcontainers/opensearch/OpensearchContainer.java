@@ -34,6 +34,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
+import java.util.Collections;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
@@ -114,6 +115,10 @@ public class OpensearchContainer extends GenericContainer<OpensearchContainer> {
         withEnv("discovery.type", "single-node");
         withEnv("DISABLE_SECURITY_PLUGIN", "true");
         addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_TCP_PORT);
+        withCreateContainerCmdModifier(
+                cmd ->
+                        cmd.getHostConfig()
+                                .withSecurityOpts(Collections.singletonList("seccomp=unconfined")));
         setWaitStrategy(
                 new HttpWaitStrategy()
                         .forPort(DEFAULT_HTTP_PORT)
@@ -121,7 +126,7 @@ public class OpensearchContainer extends GenericContainer<OpensearchContainer> {
                         .forStatusCodeMatching(
                                 response -> response == HTTP_OK || response == HTTP_UNAUTHORIZED)
                         .withReadTimeout(Duration.ofSeconds(10))
-                        .withStartupTimeout(Duration.ofMinutes(5)));
+                        .withStartupTimeout(Duration.ofMinutes(2)));
     }
 
     /**
